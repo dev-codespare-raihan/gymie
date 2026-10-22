@@ -3,8 +3,10 @@
 namespace App\Observers;
 
 use App\Contracts\SettingsRepository;
+use App\Helpers\Helpers;
 use App\Jobs\SendInvoicePaymentReceiptEmail;
 use App\Models\InvoiceTransaction;
+use App\Services\Sms\SmsNotificationService;
 use App\Support\Data;
 use Illuminate\Support\Facades\Log;
 
@@ -15,7 +17,10 @@ use Illuminate\Support\Facades\Log;
  */
 class InvoiceTransactionObserver
 {
-    public function __construct(private readonly SettingsRepository $settingsRepository) {}
+    public function __construct(
+        private readonly SettingsRepository $settingsRepository,
+        private readonly SmsNotificationService $sms,
+    ) {}
 
     /**
      * Handle the InvoiceTransaction "created" event.
@@ -30,6 +35,29 @@ class InvoiceTransactionObserver
             return;
         }
 
+        $invoiceTransaction->loadMissing('invoice.subscription.member');
+
+        $invoiceId = $invoiceTransaction->invoice?->getKey();
+        if (! $invoiceId) {
+            return;
+        }
+
+        $invoice = $invoiceTransaction->invoice;
+        $member = $invoice->subscription?->member;
+
+        if ($member) {
+            $this->sms->queue('payment_received', $member->contact, [
+                'name' => (string) $member->name,
+                'member_code' => (string) $member->code,
+                'invoice_number' => (string) $invoice->number,
+                'status' => $invoice->getDisplayStatusLabel(),
+                'total' => Helpers::formatCurrency((float) $invoice->total_amount),
+                'paid' => Helpers::formatCurrency((float) $invoice->paid_amount),
+                'due' => Helpers::formatCurrency((float) $invoice->due_amount),
+                'payment_amount' => Helpers::formatCurrency((float) $invoiceTransaction->amount),
+            ]);
+        }
+
         $settings = $this->settingsRepository->get();
 
         if (
@@ -39,18 +67,7 @@ class InvoiceTransactionObserver
             return;
         }
 
-        $invoiceTransaction->loadMissing('invoice.subscription.member');
-
-        $invoiceId = $invoiceTransaction->invoice?->getKey();
-        if (! $invoiceId) {
-            return;
-        }
-
-        $invoice = $invoiceTransaction->invoice;
-
-        $email = $invoice->subscription && $invoice->subscription->member
-            ? (string) $invoice->subscription->member->email
-            : '';
+        $email = (string) ($member?->email ?? '');
 
         if (! filled($email)) {
             Log::info('Skipping payment receipt email: member email missing.', [

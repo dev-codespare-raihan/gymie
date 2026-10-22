@@ -33,5 +33,49 @@
     },
     "subscriptions": {
         "expiring_days": 7
+    },
+    "notifications": {
+        "email": {
+            "enabled": false,
+            "auto_send_invoice_issued": false,
+            "auto_send_payment_receipt": false,
+            "invoice_subject_template": "Invoice {invoice_number} - {status}",
+            "receipt_subject_template": "Payment received - {invoice_number}"
+        },
+        "sms": {
+            "enabled": false,
+            "api_key": "",
+            "route": "q",
+            "templates": {
+                "enquiry_created": {
+                    "enabled": false,
+                    "message": "Hi {name}, thanks for your interest in {gym_name}. We will be in touch soon."
+                },
+                "follow_up_scheduled": {
+                    "enabled": false,
+                    "message": "Hi {name}, your follow-up with {gym_name} is scheduled for {schedule_date}."
+                },
+                "member_created": {
+                    "enabled": false,
+                    "message": "Welcome to {gym_name}, {name}! Your member code is {member_code}."
+                },
+                "subscription_started": {
+                    "enabled": false,
+                    "message": "Hi {name}, your {plan_name} membership at {gym_name} starts on {start_date} and ends on {end_date}."
+                },
+                "subscription_renewed": {
+                    "enabled": false,
+                    "message": "Hi {name}, your {plan_name} membership at {gym_name} has been renewed through {end_date}."
+                },
+                "invoice_issued": {
+                    "enabled": false,
+                    "message": "Hi {name}, invoice {invoice_number} from {gym_name}: total {total}, due {due}."
+                },
+                "payment_received": {
+                    "enabled": false,
+                    "message": "Hi {name}, we received {payment_amount} for invoice {invoice_number}. Thank you, {gym_name}."
+                }
+            }
+        }
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Contracts\SettingsRepository;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\File;
  */
 class JsonSettingsRepository implements SettingsRepository
 {
+    private const ENCRYPTED_SECRET_PREFIX = 'encrypted:';
+
     private const SETTINGS_PATH = 'data/settingsData.json';
 
     private const EXAMPLE_SETTINGS_PATH = 'data/settingsData.json.example';
@@ -53,7 +57,7 @@ class JsonSettingsRepository implements SettingsRepository
                 $settings = json_decode((string) file_get_contents($exampleFilePath), true) ?? [];
                 $settings = is_array($settings) ? $settings : [];
 
-                return $this->cachedSettings = $this->normalize($settings);
+                return $this->cachedSettings = $this->normalize($this->decryptSecrets($settings));
             }
 
             return $this->cachedSettings = $this->normalize([]);
@@ -68,7 +72,7 @@ class JsonSettingsRepository implements SettingsRepository
         $settings = json_decode((string) file_get_contents($filePath), true) ?? [];
         $settings = is_array($settings) ? $settings : [];
 
-        return $this->cachedSettings = $this->normalize($settings);
+        return $this->cachedSettings = $this->normalize($this->decryptSecrets($settings));
     }
 
     /**
@@ -99,10 +103,54 @@ class JsonSettingsRepository implements SettingsRepository
         File::ensureDirectoryExists(dirname($filePath));
         File::replace(
             $filePath,
-            json_encode($normalized, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
+            json_encode($this->encryptSecrets($normalized), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
         );
 
         $this->cachedSettings = $normalized;
+    }
+
+    /**
+     * Encrypt the SMS API key before persisting settings to disk.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function encryptSecrets(array $settings): array
+    {
+        $apiKey = data_get($settings, 'notifications.sms.api_key');
+
+        if (is_string($apiKey) && $apiKey !== '' && ! str_starts_with($apiKey, self::ENCRYPTED_SECRET_PREFIX)) {
+            data_set($settings, 'notifications.sms.api_key', self::ENCRYPTED_SECRET_PREFIX.Crypt::encryptString($apiKey));
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Decrypt the SMS API key after reading settings from disk.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function decryptSecrets(array $settings): array
+    {
+        $apiKey = data_get($settings, 'notifications.sms.api_key');
+
+        if (! is_string($apiKey) || ! str_starts_with($apiKey, self::ENCRYPTED_SECRET_PREFIX)) {
+            return $settings;
+        }
+
+        try {
+            data_set(
+                $settings,
+                'notifications.sms.api_key',
+                Crypt::decryptString(substr($apiKey, mb_strlen(self::ENCRYPTED_SECRET_PREFIX))),
+            );
+        } catch (DecryptException) {
+            data_set($settings, 'notifications.sms.api_key', '');
+        }
+
+        return $settings;
     }
 
     private function initializeFile(string $filePath): void
@@ -190,6 +238,12 @@ class JsonSettingsRepository implements SettingsRepository
         ) {
             $notifications['email'] = [];
         }
+        if (
+            ! array_key_exists('sms', $notifications) ||
+            ! is_array($notifications['sms'])
+        ) {
+            $notifications['sms'] = [];
+        }
         $settings['notifications'] = $notifications;
 
         /** @var array<string, mixed> $emailSettings */
@@ -207,6 +261,43 @@ class JsonSettingsRepository implements SettingsRepository
             }
         }
         $settings['notifications']['email'] = $emailSettings;
+
+        /** @var array<string, mixed> $smsSettings */
+        $smsSettings = $settings['notifications']['sms'];
+        $smsSettings['enabled'] ??= false;
+        $smsSettings['api_key'] ??= '';
+        $smsSettings['route'] = 'q';
+        $smsSettings['templates'] = array_replace_recursive([
+            'enquiry_created' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, thanks for your interest in {gym_name}. We will be in touch soon.',
+            ],
+            'follow_up_scheduled' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, your follow-up with {gym_name} is scheduled for {schedule_date}.',
+            ],
+            'member_created' => [
+                'enabled' => false,
+                'message' => 'Welcome to {gym_name}, {name}! Your member code is {member_code}.',
+            ],
+            'subscription_started' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, your {plan_name} membership at {gym_name} starts on {start_date} and ends on {end_date}.',
+            ],
+            'subscription_renewed' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, your {plan_name} membership at {gym_name} has been renewed through {end_date}.',
+            ],
+            'invoice_issued' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, invoice {invoice_number} from {gym_name}: total {total}, due {due}.',
+            ],
+            'payment_received' => [
+                'enabled' => false,
+                'message' => 'Hi {name}, we received {payment_amount} for invoice {invoice_number}. Thank you, {gym_name}.',
+            ],
+        ], is_array($smsSettings['templates'] ?? null) ? $smsSettings['templates'] : []);
+        $settings['notifications']['sms'] = $smsSettings;
 
         /** @var array<string, mixed> $payments */
         $payments = $settings['payments'];

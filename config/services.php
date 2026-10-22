@@ -28,6 +28,10 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
+    'fast2sms' => [
+        'url' => env('FAST2SMS_API_URL', 'https://www.fast2sms.com/dev/bulkV2'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

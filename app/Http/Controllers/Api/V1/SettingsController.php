@@ -22,6 +22,7 @@ class SettingsController extends ApiController
         $this->requirePermission($request, 'View:Settings');
 
         $settings = $this->settingsRepository->get();
+        unset($settings['notifications']['sms']['api_key']);
 
         return response()->json([
             'data' => $settings,
@@ -42,8 +43,11 @@ class SettingsController extends ApiController
 
         $this->settingsRepository->put($updated);
 
+        $settings = $this->settingsRepository->get();
+        unset($settings['notifications']['sms']['api_key']);
+
         return response()->json([
-            'data' => $this->settingsRepository->get(),
+            'data' => $settings,
         ]);
     }
 }
