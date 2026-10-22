@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Contracts\SettingsRepository;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
 use App\Filament\Resources\Enquiries\EnquiryResource;
@@ -14,6 +15,7 @@ use App\Filament\Resources\Services\ServiceResource;
 use App\Filament\Resources\Subscriptions\SubscriptionResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Http\Middleware\SetAppLocale;
+use App\Services\GitHubMainVersionService;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
 use Filament\Enums\ThemeMode;
@@ -28,12 +30,14 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -63,11 +67,11 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
             ->passwordReset()
-            ->brandName('Gymie')
-            ->brandLogo('/images/logo.svg')
-            ->darkModeBrandLogo('/images/logo-dark-mode.svg')
-            ->brandLogoHeight('2.5rem')
-            ->favicon('/images/favicon.svg')
+            ->brandName(fn (): string => $this->softwareSetting('brand_name', 'Codespare Technologies'))
+            ->brandLogo(fn (): string => $this->softwareImageUrl('logo', 'images/codespare-logo.svg'))
+            ->darkModeBrandLogo(fn (): string => $this->softwareImageUrl('dark_mode_logo', 'images/codespare-logo-dark-mode.svg'))
+            ->brandLogoHeight('4rem')
+            ->favicon(fn (): string => $this->softwareImageUrl('favicon', 'images/codespare-mark.svg'))
             ->unsavedChangesAlerts()
             ->colors($this->colors())
             ->defaultThemeMode(ThemeMode::Light)
@@ -105,6 +109,12 @@ class AdminPanelProvider extends PanelProvider
                 fn (): HtmlString => new HtmlString(
                     Blade::render('@livewire(\\App\\Filament\\Livewire\\LocaleSwitcher::class, [], key(\'locale-switcher\'))')
                 ),
+            )
+            ->renderHook(
+                PanelsRenderHook::FOOTER,
+                fn (): View => view('filament.components.footer', [
+                    'githubVersion' => app(GitHubMainVersionService::class)->latest(),
+                ]),
             );
     }
 
@@ -173,25 +183,38 @@ class AdminPanelProvider extends PanelProvider
      */
     protected function colors(): array
     {
+        $brandColor = $this->softwareSetting('primary_color', '#00499d');
+        $primary = is_string($brandColor) && preg_match('/^#[0-9A-Fa-f]{6}$/', $brandColor)
+            ? Color::hex($brandColor)
+            : Color::hex('#00499d');
+
         return [
-            'primary' => [
-                50 => '#b3fefc',
-                100 => '#37f2ee',
-                200 => '#2dcdc9',
-                300 => '#24adaa',
-                400 => '#1c908d',
-                500 => '#157573',
-                600 => '#0e5c5a',
-                700 => '#084543',
-                800 => '#042f2e',
-                900 => '#021f1e',
-                950 => '#011413',
-            ],
+            'primary' => $primary,
             'danger' => Color::Rose,
             'gray' => Color::Gray,
             'info' => Color::Blue,
             'success' => Color::Emerald,
             'warning' => Color::Orange,
         ];
+    }
+
+    private function softwareSetting(string $key, string $default): string
+    {
+        $settings = app(SettingsRepository::class)->get();
+        $value = data_get($settings, "software.{$key}");
+
+        return is_string($value) && trim($value) !== '' ? trim($value) : $default;
+    }
+
+    private function softwareImageUrl(string $key, string $fallback): string
+    {
+        $path = $this->softwareSetting($key, '');
+        if ($path !== '' && Storage::disk('public')->exists($path)) {
+            return asset('storage/'.$path);
+        }
+
+        $version = file_exists(public_path($fallback)) ? filemtime(public_path($fallback)) : time();
+
+        return asset($fallback).'?v='.$version;
     }
 }

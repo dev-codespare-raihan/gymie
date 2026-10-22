@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'brand' => [
+        'latest_version' => 'Latest version',
+        'version_unavailable' => 'Version details unavailable',
+    ],
     'api' => [
         'invalid_query' => 'Invalid query parameters.',
     ],
@@ -312,9 +316,8 @@ return [
     ],
     'locales' => [
         'en' => 'English',
-        'fr' => 'French',
-        'ar' => 'Arabic',
-        'fa' => 'Farsi',
+        'bn' => 'বাংলা',
+        'hi' => 'हिन्दी',
     ],
     'settings' => [
         'title' => 'Settings',
@@ -323,6 +326,8 @@ return [
             'save_settings' => 'Save settings',
             'refresh_sms_logs' => 'Refresh logs',
             'check_sms_connection' => 'Check connection',
+            'clear_application_caches' => 'Clear application caches',
+            'optimize_application' => 'Optimize application',
         ],
         'tabs' => [
             'gym_info' => 'Gym Info',
@@ -332,6 +337,7 @@ return [
             'expenses' => 'Expenses',
             'subscriptions' => 'Subscriptions',
             'sms' => 'SMS',
+            'software_configuration' => 'Software Configuration',
         ],
         'sections' => [
             'general_information' => 'General Information',
@@ -341,6 +347,8 @@ return [
             'fast2sms' => 'Fast2SMS configuration',
             'sms_templates' => 'CRM SMS templates',
             'sms_logs' => 'SMS delivery history',
+            'software_branding' => 'Software branding',
+            'software_maintenance' => 'Maintenance tools',
         ],
         'fields' => [
             'gym_name' => 'Gym Name',
@@ -372,6 +380,11 @@ return [
             'discount_percent_available' => 'Discount percent available',
             'categories' => 'Categories',
             'expiring_days' => 'Expiring soon window (days)',
+            'software_brand_name' => 'Software name',
+            'software_primary_color' => 'Primary color',
+            'software_logo' => 'Light mode logo',
+            'software_dark_mode_logo' => 'Dark mode logo',
+            'software_favicon' => 'Favicon',
         ],
         'options' => [
             'name_type' => [
@@ -387,6 +400,8 @@ return [
             'tokens_receipt' => 'Tokens: {invoice_number}, {status}, {total}, {paid}, {due}, {gym_name}, {member_name}, {payment_amount}',
             'sms_template_tokens' => 'Use the available tokens shown in the default message. Fast2SMS Quick SMS route is used.',
             'sms_logs_description' => 'Recent delivery attempts. Phone numbers are masked, and message content is not stored.',
+            'software_branding_refresh' => 'Changes apply across the admin panel after you save and refresh the page. Use PNG, JPG, or WebP images.',
+            'software_maintenance' => 'Clear cached configuration and generated files, or rebuild Laravel optimization caches.',
         ],
         'sms_connection' => [
             'checking' => 'Checking…',
@@ -395,6 +410,11 @@ return [
             'missing_key' => 'Enter an API key to check the connection.',
             'not_checked' => 'Connection not checked yet.',
             'unreachable' => 'Could not reach Fast2SMS. Check your network and try again.',
+        ],
+        'notifications' => [
+            'cache_cleared' => 'Application caches cleared.',
+            'application_optimized' => 'Application optimization caches rebuilt.',
+            'maintenance_failed' => 'The maintenance command could not be completed. Check the application log.',
         ],
         'sms_log_columns' => [
             'date' => 'Date and time',

@@ -2,6 +2,7 @@
 
 use App\Contracts\SettingsRepository;
 use App\Filament\Livewire\LocaleSwitcher;
+use Illuminate\Support\Arr;
 use Livewire\Livewire;
 
 it('persists the selected locale in settings', function (): void {
@@ -99,4 +100,60 @@ it('renders the current locale label in the trigger', function (): void {
     Livewire::test(LocaleSwitcher::class)
         ->assertSeeHtml('fi-locale-switcher-label')
         ->assertSee('English');
+});
+
+it('offers English, Bangla, and Hindi in the language selector', function (): void {
+    app()->setLocale('en');
+
+    Livewire::test(LocaleSwitcher::class)
+        ->assertSee('বাংলা')
+        ->assertSee('हिन्दी')
+        ->assertDontSee('French')
+        ->assertDontSee('Arabic')
+        ->assertDontSee('Farsi');
+});
+
+it('loads translated application strings and preserves dynamic placeholders', function (): void {
+    $originalLocale = app()->getLocale();
+
+    try {
+        foreach (['bn' => 'ভাষা', 'hi' => 'भाषा'] as $locale => $expectedLanguageLabel) {
+            app()->setLocale($locale);
+
+            expect(__('app.settings.language'))->toBe($expectedLanguageLabel);
+
+            $message = __('app.empty.no_records_marked_as', [
+                'records' => 'Subscriptions',
+                'status' => 'Ongoing',
+            ]);
+
+            expect($message)
+                ->toContain('Subscriptions')
+                ->toContain('Ongoing')
+                ->not->toContain(':records')
+                ->not->toContain(':status');
+        }
+    } finally {
+        app()->setLocale($originalLocale);
+    }
+});
+
+it('keeps Bangla and Hindi translation keys and placeholders aligned with English', function (): void {
+    $englishMessages = Arr::dot(require lang_path('en/app.php'));
+
+    foreach (['bn', 'hi'] as $locale) {
+        $translatedMessages = Arr::dot(require lang_path("{$locale}/app.php"));
+
+        expect(array_keys($translatedMessages))->toBe(array_keys($englishMessages));
+
+        foreach ($englishMessages as $key => $englishMessage) {
+            preg_match_all('/:[A-Za-z_][A-Za-z0-9_]*|\{[^{}]+\}/', $englishMessage, $englishPlaceholders);
+            preg_match_all('/:[A-Za-z_][A-Za-z0-9_]*|\{[^{}]+\}/', $translatedMessages[$key], $translatedPlaceholders);
+
+            sort($englishPlaceholders[0]);
+            sort($translatedPlaceholders[0]);
+
+            expect($translatedPlaceholders[0])->toBe($englishPlaceholders[0]);
+        }
+    }
 });

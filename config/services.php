@@ -32,6 +32,11 @@ return [
         'url' => env('FAST2SMS_API_URL', 'https://www.fast2sms.com/dev/bulkV2'),
     ],
 
+    'github_version' => [
+        'repository' => env('GITHUB_VERSION_REPOSITORY', 'dev-codespare-raihan/gymie'),
+        'branch' => env('GITHUB_VERSION_BRANCH', 'main'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

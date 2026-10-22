@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'brand' => [
+        'latest_version' => 'آخرین نسخه',
+        'version_unavailable' => 'اطلاعات نسخه در دسترس نیست',
+    ],
     'api' => [
         'invalid_query' => 'پارامترهای درخواست نامعتبر است.',
     ],
@@ -312,9 +316,8 @@ return [
     ],
     'locales' => [
         'en' => 'انگلیسی (English)',
-        'fr' => 'فرانسوی (French)',
-        'ar' => 'عربی (Arabic)',
-        'fa' => 'فارسی (Farsi)',
+        'bn' => 'بنگالی (Bengali)',
+        'hi' => 'هندی (Hindi)',
     ],
     'settings' => [
         'title' => 'تنظیمات',

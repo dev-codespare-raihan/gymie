@@ -84,6 +84,7 @@ class EnquiryForm
                     ])->columns(3)->columnSpanFull(),
                 LocationSection::make(
                     pincodeRequired: true,
+                    countrySearchable: true,
                     regionSearchable: true,
                 ),
                 Section::make(__('app.ui.preferences'))

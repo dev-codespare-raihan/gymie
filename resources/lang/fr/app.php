@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'brand' => [
+        'latest_version' => 'Dernière version',
+        'version_unavailable' => 'Détails de version indisponibles',
+    ],
     'api' => [
         'invalid_query' => 'Paramètres de requête invalides.',
     ],
@@ -312,9 +316,8 @@ return [
     ],
     'locales' => [
         'en' => 'Anglais',
-        'fr' => 'Français',
-        'ar' => 'Arabe',
-        'fa' => 'Farsi',
+        'bn' => 'Bengali',
+        'hi' => 'Hindi',
     ],
     'settings' => [
         'title' => 'Paramètres',

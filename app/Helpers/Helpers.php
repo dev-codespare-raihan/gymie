@@ -13,7 +13,9 @@ use App\Support\Billing\TaxRate;
 use App\Support\Data;
 use App\Support\Dates\FiscalYear;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nnjeim\World\WorldHelper;
 
@@ -255,22 +257,30 @@ class Helpers
      */
     public static function getCurrencies(): array
     {
-        if (app()->runningUnitTests()) {
-            return [];
+        $currencies = self::fallbackCurrencies();
+        $currencyModel = config('world.models.currencies');
+        if (! is_string($currencyModel) || ! class_exists($currencyModel) || ! is_a($currencyModel, Model::class, true)) {
+            return $currencies;
         }
 
-        $currencyResponse = self::worldResponse('currencies', [
-            'fields' => 'name,code',
-        ]);
+        $currency = new $currencyModel;
+        $connection = $currency->getConnectionName() ?? (string) config('database.default');
+        $table = $currency->getTable();
 
-        if (! $currencyResponse->success) {
-            return [];
+        if (! Schema::connection($connection)->hasTable($table)) {
+            return $currencies;
         }
 
-        return collect($currencyResponse->data)
+        $databaseCurrencies = $currency->newQuery()
+            ->orderBy('code')
             ->pluck('name', 'code')
             ->mapWithKeys(fn (mixed $name, mixed $key): array => [Data::string($key) => Data::string($name)])
             ->all();
+
+        $currencies = array_replace($currencies, $databaseCurrencies);
+        ksort($currencies);
+
+        return $currencies;
     }
 
     /**
@@ -496,6 +506,43 @@ class Helpers
         }
 
         return $filteredCountries;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function fallbackCurrencies(): array
+    {
+        $path = base_path('vendor/nnjeim/world/resources/json/currencies.json');
+
+        if (! is_file($path)) {
+            return [];
+        }
+
+        /** @var mixed $currencies */
+        $currencies = json_decode((string) file_get_contents($path), true);
+
+        if (! is_array($currencies)) {
+            return [];
+        }
+
+        $options = [];
+        foreach ($currencies as $code => $currency) {
+            if (! is_array($currency)) {
+                continue;
+            }
+
+            $currencyCode = Data::string($currency['code'] ?? $code);
+            $name = Data::string($currency['name'] ?? '');
+
+            if ($currencyCode !== '' && $name !== '') {
+                $options[$currencyCode] = $name;
+            }
+        }
+
+        ksort($options);
+
+        return $options;
     }
 
     /**

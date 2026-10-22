@@ -34,8 +34,8 @@ return [
     */
     'info' => [
         'version' => env('API_VERSION', '1.0.0'),
-        'title' => 'Gymie API',
-        'description' => 'Gymie JSON API. Bearer token auth: send `Authorization: Bearer <token>` and `Accept: application/json`.',
+        'title' => 'Codespare Technologies API',
+        'description' => 'Codespare Technologies API. Bearer token auth: send `Authorization: Bearer <token>` and `Accept: application/json`.',
     ],
 
     /*

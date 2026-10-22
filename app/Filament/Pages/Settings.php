@@ -6,6 +6,8 @@ use App\Contracts\SettingsRepository;
 use App\Helpers\Helpers;
 use Carbon\Carbon;
 use Composer\CaBundle\CaBundle;
+use Filament\Forms\Components\BaseFileUpload;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -27,8 +29,10 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
  * @property-read Schema $form
@@ -86,7 +90,12 @@ class Settings extends Page implements HasForms
      */
     public function getSmsDeliveryLogsProperty(): Collection
     {
-        return DB::table('sms_delivery_logs')
+        $connection = (string) config('database.default');
+        if (! DatabaseSchema::connection($connection)->hasTable('sms_delivery_logs')) {
+            return collect();
+        }
+
+        return DB::connection($connection)->table('sms_delivery_logs')
             ->latest()
             ->limit(50)
             ->get();
@@ -156,8 +165,141 @@ class Settings extends Page implements HasForms
                     $this->expensesTab(),
                     $this->subscriptionsTab(),
                     $this->smsTab(),
+                    $this->softwareConfigurationTab(),
                 ]),
         ];
+    }
+
+    public function canManageSoftwareConfiguration(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public function clearApplicationCaches(): void
+    {
+        $this->authorizeSoftwareConfiguration();
+
+        try {
+            Artisan::call('optimize:clear');
+            Notification::make()
+                ->title(__('app.settings.notifications.cache_cleared'))
+                ->success()
+                ->send();
+        } catch (\Throwable $exception) {
+            report($exception);
+            Notification::make()
+                ->title(__('app.settings.notifications.maintenance_failed'))
+                ->danger()
+                ->send();
+        }
+    }
+
+    public function optimizeApplication(): void
+    {
+        $this->authorizeSoftwareConfiguration();
+
+        try {
+            Artisan::call('optimize');
+            Notification::make()
+                ->title(__('app.settings.notifications.application_optimized'))
+                ->success()
+                ->send();
+        } catch (\Throwable $exception) {
+            report($exception);
+            Notification::make()
+                ->title(__('app.settings.notifications.maintenance_failed'))
+                ->danger()
+                ->send();
+        }
+    }
+
+    private function authorizeSoftwareConfiguration(): void
+    {
+        abort_unless($this->canManageSoftwareConfiguration(), 403);
+    }
+
+    /**
+     * Build upload previews from the current request host so local host aliases work.
+     *
+     * @return array{name: string, size: int, type: ?string, url: ?string}|null
+     */
+    private function getSoftwareUploadedFile(
+        BaseFileUpload $component,
+        string $file,
+        string|array|null $storedFileNames,
+    ): ?array {
+        $uploadedFile = $component->getUploadedFile($file, $storedFileNames);
+
+        if ($uploadedFile !== null) {
+            $uploadedFile['url'] = asset('storage/'.$file);
+        }
+
+        return $uploadedFile;
+    }
+
+    private function softwareConfigurationTab(): Tab
+    {
+        return Tab::make(__('app.settings.tabs.software_configuration'))
+            ->icon('heroicon-m-cog-6-tooth')
+            ->visible(fn (): bool => $this->canManageSoftwareConfiguration())
+            ->schema([
+                Section::make(__('app.settings.sections.software_branding'))
+                    ->description(__('app.settings.hints.software_branding_refresh'))
+                    ->schema([
+                        TextInput::make('software.brand_name')
+                            ->label(__('app.settings.fields.software_brand_name'))
+                            ->default('Codespare Technologies')
+                            ->maxLength(100)
+                            ->required(),
+                        ColorPicker::make('software.primary_color')
+                            ->label(__('app.settings.fields.software_primary_color'))
+                            ->hex()
+                            ->default('#00499d')
+                            ->required()
+                            ->rules(['regex:/^#[0-9A-Fa-f]{6}$/']),
+                        FileUpload::make('software.logo')
+                            ->label(__('app.settings.fields.software_logo'))
+                            ->disk('public')
+                            ->directory('software-branding')
+                            ->visibility('public')
+                            ->image()
+                            ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getSoftwareUploadedFile($component, $file, $storedFileNames))
+                            ->maxSize(2048)
+                            ->deletable(),
+                        FileUpload::make('software.dark_mode_logo')
+                            ->label(__('app.settings.fields.software_dark_mode_logo'))
+                            ->disk('public')
+                            ->directory('software-branding')
+                            ->visibility('public')
+                            ->image()
+                            ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getSoftwareUploadedFile($component, $file, $storedFileNames))
+                            ->maxSize(2048)
+                            ->deletable(),
+                        FileUpload::make('software.favicon')
+                            ->label(__('app.settings.fields.software_favicon'))
+                            ->disk('public')
+                            ->directory('software-branding')
+                            ->visibility('public')
+                            ->acceptedFileTypes([
+                                'image/png',
+                                'image/jpeg',
+                                'image/webp',
+                                'image/x-icon',
+                                'image/vnd.microsoft.icon',
+                            ])
+                            ->getUploadedFileUsing(fn (BaseFileUpload $component, string $file, string|array|null $storedFileNames): ?array => $this->getSoftwareUploadedFile($component, $file, $storedFileNames))
+                            ->maxSize(512)
+                            ->deletable(),
+                    ])
+                    ->columns(2),
+                Section::make(__('app.settings.sections.software_maintenance'))
+                    ->description(__('app.settings.hints.software_maintenance'))
+                    ->schema([
+                        View::make('filament.pages.software-maintenance-actions'),
+                    ]),
+            ]);
     }
 
     /**
@@ -495,6 +637,8 @@ class Settings extends Page implements HasForms
     public function save(): void
     {
         $settings = $this->form->getState();
+        $repository = app(SettingsRepository::class);
+        $existingSettings = $repository->get();
         $general = is_array($settings['general'] ?? null) ? $settings['general'] : [];
 
         if (! empty($general['financial_year_start']) && is_string($general['financial_year_start'])) {
@@ -520,8 +664,22 @@ class Settings extends Page implements HasForms
 
         $settings['general'] = $general;
 
+        if ($this->canManageSoftwareConfiguration()) {
+            $software = is_array($settings['software'] ?? null) ? $settings['software'] : [];
+            foreach (['logo', 'dark_mode_logo', 'favicon'] as $imageKey) {
+                if (is_array($software[$imageKey] ?? null)) {
+                    $software[$imageKey] = array_values($software[$imageKey])[0] ?? null;
+                }
+            }
+            $settings['software'] = $software;
+        } else {
+            $settings['software'] = is_array($existingSettings['software'] ?? null)
+                ? $existingSettings['software']
+                : [];
+        }
+
         try {
-            app(SettingsRepository::class)->put($settings);
+            $repository->put($settings);
             $this->form->fill($settings);
         } catch (\Throwable $exception) {
             report($exception);

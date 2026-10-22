@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Subscriptions\Tables;
 
 use App\Enums\Status;
+use App\Filament\Resources\Plans\PlanResource;
 use App\Filament\Resources\Subscriptions\Schemas\SubscriptionForm;
 use App\Filament\Resources\Subscriptions\SubscriptionResource;
 use App\Models\Member;
@@ -146,7 +147,7 @@ class SubscriptionTable
                 Action::make('create_plan')
                     ->icon('heroicon-o-plus')
                     ->label(__('app.actions.new', ['resource' => __('app.resources.plans.singular')]))
-                    ->url(fn () => route('filament.admin.resources.plans.create'))
+                    ->url(fn (): string => PlanResource::getUrl('index'))
                     ->hidden(fn () => Plan::exists()),
             ])
             ->filters([

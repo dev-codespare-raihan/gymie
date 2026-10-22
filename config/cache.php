@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -119,6 +120,7 @@ return [
 
     'serializable_classes' => [
         Collection::class,
+        EloquentCollection::class,
     ],
 
 ];

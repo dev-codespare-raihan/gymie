@@ -3,6 +3,7 @@
 namespace App\Filament\Livewire;
 
 use App\Contracts\SettingsRepository;
+use App\Support\AppConfig;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -16,14 +17,13 @@ class LocaleSwitcher extends Component
      */
     private const LOCALE_FLAGS = [
         'en' => '🇺🇸',
-        'fr' => '🇫🇷',
-        'ar' => '🇸🇦',
-        'fa' => '🇮🇷',
+        'bn' => '🇧🇩',
+        'hi' => '🇮🇳',
     ];
 
     public function mount(): void
     {
-        $this->locale = \App\Support\AppConfig::string('app.locale', 'en');
+        $this->locale = AppConfig::string('app.locale', 'en');
     }
 
     /**
@@ -33,7 +33,7 @@ class LocaleSwitcher extends Component
     {
         $options = [];
 
-        foreach (\App\Support\AppConfig::supportedLocales() as $locale) {
+        foreach (AppConfig::supportedLocales() as $locale) {
             $options[$locale] = [
                 'label' => (string) __("app.locales.{$locale}"),
                 'flag' => self::LOCALE_FLAGS[$locale] ?? '🏳️',

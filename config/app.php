@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Codespare Technologies'),
 
     /*
     |--------------------------------------------------------------------------
@@ -94,7 +94,7 @@ return [
     |
     */
 
-    'supported_locales' => ['en', 'fr', 'ar', 'fa'],
+    'supported_locales' => ['en', 'bn', 'hi'],
 
     /*
     |--------------------------------------------------------------------------

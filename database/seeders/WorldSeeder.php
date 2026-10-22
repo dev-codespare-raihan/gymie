@@ -2,15 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Services\WorldDataImporter;
 use Illuminate\Database\Seeder;
-use Nnjeim\World\Actions\SeedAction;
 
 class WorldSeeder extends Seeder
 {
-	public function run()
-	{
-		$this->call([
-			SeedAction::class,
-		]);
-	}
+    public function run(): void
+    {
+        app(WorldDataImporter::class)->import();
+    }
 }

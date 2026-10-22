@@ -16,11 +16,19 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => Hash::make('test'),
-            'status' => 'active',
-        ])->assignRole('super_admin');
+        $user = User::withTrashed()->firstOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => Hash::make('test'),
+                'status' => 'active',
+            ],
+        );
+
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        $user->assignRole('super_admin');
     }
 }

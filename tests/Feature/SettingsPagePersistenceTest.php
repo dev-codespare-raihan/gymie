@@ -208,3 +208,51 @@ it('stores and reloads the gym logo', function (): void {
 
     expect($reloadedComponent->get('data.general.gym_logo'))->toBeArray();
 });
+
+it('preserves software branding when a non-admin saves other settings', function (): void {
+    $repository = new class implements SettingsRepository
+    {
+        /** @var array<string, mixed> */
+        public array $settings = [
+            'general' => [],
+            'invoice' => [],
+            'member' => [],
+            'charges' => ['discounts' => []],
+            'expenses' => ['categories' => []],
+            'subscriptions' => ['expiring_days' => 7],
+            'payments' => [],
+            'notifications' => ['email' => []],
+            'software' => [
+                'brand_name' => 'Existing brand',
+                'primary_color' => '#123456',
+                'logo' => 'software-branding/logo.png',
+            ],
+        ];
+
+        public function get(): array
+        {
+            return $this->settings;
+        }
+
+        public function put(array $settings): void
+        {
+            $this->settings = $settings;
+        }
+    };
+
+    app()->instance(SettingsRepository::class, $repository);
+
+    Livewire::test(Settings::class)
+        ->set('data.software.brand_name', 'Tampered brand')
+        ->call('save')
+        ->assertDontSee('Software Configuration');
+
+    expect($repository->settings['software']['brand_name'])->toBe('Existing brand')
+        ->and($repository->settings['software']['primary_color'])->toBe('#123456');
+});
+
+it('blocks non-admin users from running application maintenance commands', function (): void {
+    Livewire::test(Settings::class)
+        ->call('clearApplicationCaches')
+        ->assertForbidden();
+});
